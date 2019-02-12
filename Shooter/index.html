@@ -2,11 +2,21 @@
 <html>
 	<head>
 		<meta charset="UTF-8">
-		<title>Jeu Type</title>
+		<title>Rocket Game</title>
         <script src="./js/game.js"></script>
         <link rel="stylesheet" type="text/css" href="./style/game.css">
+        <body bgcolor="#000000">
     </head>
     <body>
-		<div id="arena"></div>
+    	<img id="background" src="./assets/Backgrounds/background.gif">
+		<div id="arena">
+			<p id="dead"></p>
+		</div>
+		
+		<div id="buttons">
+			<button id="button" onclick="reset()">Reset</button>
+			<button id="button" onclick="pause()">Pause</button>
+			<button id="button" onclick="play()">Play</button>
+		</div>
     </body>
 </html>

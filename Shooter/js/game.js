@@ -1,6 +1,5 @@
-//Todo  : RAZ | Trajectoires differentes (fonction) | tableau de score
-// Pause | boss de fin | aptitudes suplémentaire : items | enemis qui tires
-//Mes propositions : rendre le jeu plus fluide / jouable
+//Todo | Trajectoires differentes (fonction) | tableau de score 
+// boss de fin | aptitudes suplémentaire : items | enemis qui tires
 
 var animFrame = window.requestAnimationFrame ||
             window.webkitRequestAnimationFrame ||
@@ -9,25 +8,21 @@ var animFrame = window.requestAnimationFrame ||
             window.msRequestAnimationFrame     ||
             null;
 
+var cancelAnimationFrame = window.cancelAnimationFrame || window.mozCancelAnimationFrame;
+
 var tics = 0;
 var _timeToBeAlive = 30;
+var frameReq;
 
 //Canvas
-var divArena;
-var canArena;
-var canScore;
-var conArena;
-var conScore;
-var ArenaWidth = 800;
-var ArenaHeight = 500;
-
-//Background
-var imgBackground;
-var xBackgroundOffset = 0;
-var xBackgroundSpeed = 2;
-var backgroundWidth = 1782;
-var backgroundHeight = 600;
-//une modification
+let divArena;
+let canArena;
+let canScore;
+let conArena;
+let conScore;
+var buttons;
+var ArenaWidth = 600;
+var ArenaHeight = 700;
 
 ///////////////////////////////////
 //Keys
@@ -112,10 +107,10 @@ function ProjectileSet(tabTarget){
 
 ////////////////////
 // un objet Projectile
-function Projectile(x,y,speed,width,height,color){
+function Projectile(x,y,speed,height,width,color){
     this.x = x;
     this.y = y;
-    this.xSpeed = speed;
+    this.ySpeed = speed;
     this.width = width;
     this.height = height;
     this.color = color;
@@ -124,7 +119,8 @@ function Projectile(x,y,speed,width,height,color){
         var hits = null;
         var index;
         for(index in tabOfObjects){
-            if ((tabOfObjects[index].cptExplosion ==0) && this.x < tabOfObjects[index].x + tabOfObjects[index].width &&
+
+            if ((tabOfObjects[index].cptExplosion == 0) && this.x < tabOfObjects[index].x + tabOfObjects[index].width &&
                 this.x + this.width > tabOfObjects[index].x &&
                 this.y < tabOfObjects[index].y + tabOfObjects[index].height &&
                 this.height + this.y > tabOfObjects[index].y) {
@@ -148,7 +144,7 @@ function Projectile(x,y,speed,width,height,color){
     };
     this.update = function(){
         if(this.exists){
-            this.x +=   this.xSpeed ;
+            this.y -=   this.ySpeed ;
             var tmp = this.collision([player].concat(enemies.tabEnemies));
             if(tmp != null){
                 tmp.explodes();
@@ -160,7 +156,7 @@ function Projectile(x,y,speed,width,height,color){
 /////////////////////////////////
 
 /////////////////////////////////
-// Enemy
+// Enemies
 var enemies = {
     init : function(){
         this.tabEnemies = new Array();
@@ -194,20 +190,27 @@ var enemies = {
     }
     
 };
-//test
-function Enemy(x,y,speed){
-    this.x = x;
-    this.yOrigine = y;
-    this.y = this.yOrigine;
-    this.xSpeed = speed;
+//Enemy
+function Enemy(x,y,speed,type){
+    this.xOrigine = x;
+    this.x = this.xOrigine;
+    this.y = y;
+    this.ySpeed = speed;
     this.exists = true;
     this.height = 30;
     this.width = 40;
     this.img = new Image();
-    this.img.src = "./assets/Enemy/eSpritesheet_40x30.png";
+    if(type == 1){
+        this.img.src = "./assets/Enemy/eSpritesheet_40x30.png";
+    }
+    if(type == 2){
+        this.img.src = "./assets/Enemy/eSpritesheet_40x30_hue2.png";
+    }
     this.cpt = 0;
+    this.nbFire = 0;
+    this.cptFire = 0;
 
-    this.cptExplosion =  0;//10 images
+    this.cptExplosion = 0;//10 images
     this.imgExplosion = new Image();
     this.imgExplosionHeight = 128;
     this.imgExplosionWidth = 128;
@@ -233,7 +236,11 @@ function Enemy(x,y,speed){
         return hits;
     };
     this.fire = function (){
-        var tmp = new Projectile(this.x-10,this.y+this.height/2,-4,10,5,"rgb(0,200,0)");
+        if(type == 1){
+            var tmp = new Projectile(this.x+16,this.y+this.height,-4,8,3,"rgb(255,255,51)");
+        }if(type == 2){
+            var tmp = new Projectile(this.x+16,this.y+this.height,-5,10,3,"rgb(228,53,248)");
+        }
         this.projectileSet.add(tmp);
     };
     this.draw = function(){ 
@@ -254,10 +261,23 @@ function Enemy(x,y,speed){
     };
     this.update = function(){
        if(this.cptExplosion==0){//is not exploding
-            this.x +=   this.xSpeed ;
-            this.y =     this.yOrigine +20*Math.cos(this.x/10);
-            //Math.floor(Math.random())
-            //console.log(randomTrajectory(this.yOrigine,this.x));
+            if(type == 1){
+                this.x =  this.x;
+                this.y +=  this.ySpeed;
+            }
+            if(type == 2){
+
+                var xtmp =  this.x + Math.floor(Math.random()*5*Math.cos(this.y/50));
+                if(xtmp < 0){
+                    this.x = 0;
+                }
+                if(xtmp > ArenaWidth){
+                    this.x = ArenaWidth;
+                }else{
+                    this.x = xtmp;
+                }    
+                this.y +=  this.ySpeed;
+            }
             var tmp = this.collision([player]);
                 if(tmp != null){
                     tmp.explodes();
@@ -265,9 +285,39 @@ function Enemy(x,y,speed){
                 }
 
             if(tics % 5 == 1) {
-                    this.cpt = (this.cpt + 1) % 6;
+                this.cpt = (this.cpt + 1) % 6;
             }
-            //if(tics % 50 == 1) this.fire();
+
+            //1rst type of enemy////////////////////////////
+            if(type == 1 && this.nbFire == 0){
+                this.nbFire = 3;
+            }
+            if(tics % 20 == 1 && type == 1){ 
+                this.cptFire++;
+                if(this.nbFire>1){
+                    this.fire();
+                    this.nbFire--; 
+                }if(this.cptFire>6){
+                    this.nbFire = 3;
+                    this.cptFire = 0;
+                }
+            }
+
+            //2nd type of enemy
+            if(type == 2 && this.nbFire == 0){
+                this.nbFire = 6;
+            }
+            if(tics % 15 == 1 && type == 2){ 
+                this.cptFire++;
+                if(this.nbFire>1){
+                    this.fire();
+                    this.nbFire--; 
+                }if(this.cptFire>6){
+                    this.nbFire = 6;
+                    this.cptFire = 0;
+                }
+            }
+
        }else{
             if(tics % 3 == 1) {
                 this.cptExplosion++;
@@ -294,26 +344,27 @@ function randomTrajectory(x,y){
 var player = {
     init : function(){
         this.img = new Image();
-        this.img.src = "./assets/Ship/Spritesheet_64x29.png";
+        this.img.src = "./assets/Ship/Spritesheet_64x29_2.png";
         this.cpt = 0;
-        this.cptExplosion =  10;//10 images
+        this.cptExplosion = 0;//10 images
         this.imgExplosion = new Image();
         this.imgExplosionHeight = 128;
         this.imgExplosionWidth = 128;
         this.imgExplosion.src = "./assets/Explosion/explosionSpritesheet_1280x128.png";
         this.projectileSet = new ProjectileSet();
-        this.fireMulti = true;
+        this.fireMulti = false;
     },
-    x : 50,
-    ySpeed : 4,
-    xSpeed : 2,
-    y : 250,
-    height : 29,
-    width : 64,
-    nbOfLives : 3,
+    x : 280,
+    ySpeed : 3,
+    xSpeed : 5,
+    y : 600,
+    height : 64,
+    width : 116/4,
+    nbOfLives : 2,
     timeToBeAlive : 0,
+    reload : 0,
     fires : function(){
-        var tmp = new Projectile(this.x+this.width,this.y+this.height/2,4,10,3,"rgb(61, 203, 254)");
+        var tmp = new Projectile(this.x+this.width/2,this.y-4,6,10,3,"rgb(61, 203, 254)");
         this.projectileSet.add(tmp);
     },
     explodes : function(){
@@ -324,7 +375,8 @@ var player = {
                 this.cptExplosion = 1;
             }else{
                 //Game Over
-                console.log("GAME OVER");
+                document.getElementById("dead").innerHTML = "GAME<br>OVER";
+                clear();
             }
         }
     },
@@ -334,7 +386,7 @@ var player = {
     },
     update :  function(){
         var keycode;
-        if(tics % 20 == 1) {
+        if(tics % 10 == 1) {
                 this.cpt = (this.cpt + 1) % 4;
             }
         if(this.timeToBeAlive>0) {
@@ -357,6 +409,7 @@ var player = {
                     if(keycode == keys.SPACE) {
                         //shoot
                         this.fire = true;
+                        this.reload++;
                     }
                 }
                 if(keyStatus[keycode] == false){
@@ -374,6 +427,8 @@ var player = {
                     }
                     if(keycode == keys.SPACE) {
                         this.fire = false;
+                        this.fireMulti = false;
+                        this.reload = 0;
                     }
                 }
             }
@@ -390,20 +445,24 @@ var player = {
         }if(this.goLEFT){
             this.x -= this.xSpeed;
             if(this.x<0) this.x=0;
+
+        //handle fires 
         }if(this.fire){
-            if(this.fireMulti){
+            if(!this.fireMulti){
                 this.fires();
-                this.fireMulti = false;
-            }
-            if(tics % 20 == 1){
                 this.fireMulti = true;
+                this.fire = false;
+            }
+            if(this.reload >  20 ){
+                this.fireMulti = false;
+                this.reload = 0;
             }
         }
         this.projectileSet.update();
     },
     draw : function(){
         if(this.timeToBeAlive == 0) {
-            conArena.drawImage(this.img, 0,this.cpt*this.height,this.width,this.height, this.x,this.y,this.width,this.height);
+            conArena.drawImage(this.img, this.cpt*this.width,0,this.width,this.height, this.x,this.y,this.width,this.height);
         }else{
             //exploding
             if(this.cptExplosion!=0){
@@ -417,31 +476,32 @@ var player = {
 };
 
 
-
-function updateScene() {
-    "use strict"; 
-    xBackgroundOffset = (xBackgroundOffset - xBackgroundSpeed) % backgroundWidth;
-}
 function updateItems() {
     "use strict"; 
     player.update();
     tics++;
-     if(tics % 100 == 1) {
-         var rand = Math.floor(Math.random() * ArenaHeight);
-
-        enemies.add(new Enemy(ArenaWidth, rand,-2));
+    if(tics % 100 == 0) {
+        var rand = Math.floor(Math.random() * ArenaWidth-32);
+        enemies.add(new Enemy(rand,-100,3,1));
+    }
+    if(tics % 200 == 0) {
+        var rand = Math.floor(Math.random() * ArenaWidth-200);
+        enemies.add(new Enemy(rand,-100,2,2));
+    }
+    if(tics % 600 == 0) {
+        var rand = Math.floor(Math.random() * ArenaWidth-32*2);
+        enemies.add(new Enemy(rand,-100,2,1));
+        enemies.add(new Enemy(rand+40,-100,2,1));
     }
     enemies.update();
 }
-function drawScene() {
-    "use strict"; 
-    canArena.style.backgroundPosition = xBackgroundOffset + "px 0px" ;
-}
+
 function drawItems() {
     "use strict"; 
     player.draw();
     enemies.draw();
 }
+
 function clearItems() {
     "use strict"; 
     player.clear(); 
@@ -457,7 +517,6 @@ function drawScore() {
 }
 function updateGame() {
     "use strict"; 
-    updateScene();
     updateItems();
 }
 function clearGame() {
@@ -467,8 +526,7 @@ function clearGame() {
 }
 
 function drawGame() {
-    "use strict"; 
-    drawScene();
+    "use strict";
     drawScore();
     drawItems();    
 }
@@ -484,17 +542,20 @@ function mainloop () {
 function recursiveAnim () {
     "use strict"; 
     mainloop();
-    animFrame( recursiveAnim );
+    frameReq = animFrame(recursiveAnim);
 }
  
 function init() {
     "use strict";
+
     divArena = document.getElementById("arena");
     canArena = document.createElement("canvas");
+
     canArena.setAttribute("id", "canArena");
     canArena.setAttribute("height", ArenaHeight);
     canArena.setAttribute("width", ArenaWidth);
     conArena = canArena.getContext("2d");
+
     divArena.appendChild(canArena);
 
     canScore = document.createElement("canvas");
@@ -505,15 +566,34 @@ function init() {
     conScore.fillStyle = "white";
     conScore.font = 'bold 15pt Courier';
     divArena.appendChild(canScore);
-
  
     player.init();
     enemies.init();
-    
-window.addEventListener("keydown", keyDownHandler, false);
-window.addEventListener("keyup", keyUpHandler, false);
-    animFrame( recursiveAnim );
-    
+
+    window.addEventListener("keydown", keyDownHandler, false);
+    window.addEventListener("keyup", keyUpHandler, false);
+    frameReq = animFrame(recursiveAnim);
+}
+
+
+function reset() {
+    document.getElementById("dead").innerHTML = "";
+    cancelAnimationFrame(frameReq);
+    conArena.clearRect(0, 0, canArena.width, canArena.height);
+    conScore.clearRect(0, 0, canScore.width, canScore.height);
+    player.nbOfLives = 2;
+    player.score = 0;
+    player.x = 280;
+    player.y = 600;
+    init();
+}
+
+function pause() {
+    cancelAnimationFrame(frameReq);
+}
+
+function play() {
+    frameReq = animFrame(recursiveAnim);
 }
 
 window.addEventListener("load", init, false);

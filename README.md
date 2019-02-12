@@ -1,1 +1,1 @@
-# JeuWeb
+# First JavaScript project
